@@ -1,0 +1,38 @@
+.theme-src{}
+/* ===== aslp-app-kit theme ===== */
+:root{
+  --color-paper: #F4F8FC;
+  --color-surface: #FFFFFF;
+  --color-ink: #0F2744;
+  --color-muted: #47586E;
+  --color-line: #CEDCEC;
+  --color-track: #E1EAF5;
+  --color-accent: #1458B4;
+  --color-grid: #E2EAF4;
+  --font-sans: "Inter","Atkinson Hyperlegible",system-ui,sans-serif;
+  --font-display: "Space Grotesk","Atkinson Hyperlegible",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+  --color-paper: #0B1826;
+  --color-surface: #102234;
+  --color-ink: #E6EEF8;
+  --color-accent: #5DA2FF;
+  --color-grid: #15293D;
+  --color-muted: #A3B1C2;
+  --color-line: #2B3A4B;
+  --color-track: #22303F;
+  }
+}
+body{
+  background-image:
+    linear-gradient(var(--color-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-grid) 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+h1,h2,h3,h4{ font-family: var(--font-display); }
+header.bg-ink{
+  background-image: linear-gradient(rgba(255,255,255,.07) 1px, transparent 1px),linear-gradient(90deg, rgba(255,255,255,.07) 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+
