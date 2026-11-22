@@ -3,552 +3,262 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ASLP App Kit</title>
-<meta name="description" content="Offline, multilingual starter kit for speech and hearing tools. Demo: pure-tone average calculator with WHO 2021 grading.">
+<title>Audiogram & WHO Grade</title>
+<meta name="description" content="Plot a standard audiogram (ASHA symbols), calculate pure-tone averages and air-bone gaps, and grade hearing loss using the WHO World Report on Hearing (2021).">
 <meta name="theme-color" content="#17212E">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Noto+Sans+Devanagari:wght@400;600&family=Noto+Sans+Kannada:wght@400;600&family=Noto+Sans+Telugu:wght@400;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="kit.css">
 <style>
-/* =========================================================
-   1. DESIGN TOKENS — change colours here for a new app
-   ========================================================= */
-:root{
-  --paper:#F7F9FB; --grid:#E3E9F0; --surface:#FFFFFF;
-  --ink:#17212E; --muted:#556375; --line:#CBD5E1;
-  --right:#C62828; --left:#1E5BB8;          /* audiogram convention: right = red O, left = blue X */
-  --band:#17212E;                            /* WHO grade band tint */
-  --ok:#2E7D4F; --warn:#9A5B00;
-  --font:"Atkinson Hyperlegible","Noto Sans Kannada","Noto Sans Telugu","Noto Sans Devanagari",system-ui,sans-serif;
-  --r-sm:4px; --r-md:10px;
-}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --paper:#0E151E; --grid:#1B2633; --surface:#141E2A;
-    --ink:#E6ECF3; --muted:#9AA8B8; --line:#2B3A4B;
-    --right:#FF7070; --left:#78AEFF; --band:#E6ECF3;
-    --ok:#6FCF97; --warn:#F2B24C;
-  }
-}
-:root[data-theme="dark"]{
-  --paper:#0E151E; --grid:#1B2633; --surface:#141E2A;
-  --ink:#E6ECF3; --muted:#9AA8B8; --line:#2B3A4B;
-  --right:#FF7070; --left:#78AEFF; --band:#E6ECF3;
-  --ok:#6FCF97; --warn:#F2B24C;
-}
-
-/* =========================================================
-   2. BASE
-   ========================================================= */
-*{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
-body{
-  margin:0; background:var(--paper); color:var(--ink);
-  font-family:var(--font); font-size:1rem; line-height:1.55;
-  /* audiogram-paper grid */
-  background-image:
-    linear-gradient(var(--grid) 1px,transparent 1px),
-    linear-gradient(90deg,var(--grid) 1px,transparent 1px);
-  background-size:24px 24px;
-}
-:lang(kn) body, :lang(te) body, :lang(hi) body{line-height:1.7}
-a{color:var(--left)}
-:focus-visible{outline:3px solid var(--left); outline-offset:2px; border-radius:2px}
-.wrap{max-width:1040px; margin:0 auto; padding:0 16px}
-.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-
-/* =========================================================
-   3. HEADER
-   ========================================================= */
-header.top{background:var(--ink); color:var(--paper)}
-header.top .wrap{display:flex; flex-wrap:wrap; gap:12px 20px; align-items:center; justify-content:space-between; padding-block:14px}
-.brand{display:flex; align-items:center; gap:12px}
-.brand svg{flex:none}
-.brand h1{font-size:1.15rem; margin:0; letter-spacing:.01em}
-.brand small{display:block; color:color-mix(in srgb,var(--paper) 70%,transparent); font-size:.8rem; font-weight:400}
-.top-tools{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
-.net{font-size:.8rem; padding:4px 10px; border-radius:999px; border:1px solid color-mix(in srgb,var(--paper) 35%,transparent)}
-.net[data-state="offline"]{background:var(--warn); color:#fff; border-color:transparent}
-select.lang{font:inherit; font-size:.9rem; padding:6px 8px; border-radius:var(--r-sm); border:1px solid transparent; background:var(--paper); color:var(--ink)}
-
-/* =========================================================
-   4. INTRO + LAYOUT
-   ========================================================= */
-.intro{padding:28px 0 8px; max-width:64ch}
-.intro h2{font-size:clamp(1.5rem,3.4vw,2.1rem); line-height:1.2; margin:0 0 8px}
-.intro p{margin:0; color:var(--muted)}
-.grid{display:grid; gap:20px; grid-template-columns:1fr; padding:20px 0}
-@media (min-width:860px){ .grid{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr)} }
-.panel{background:var(--surface); border:1px solid var(--line); border-radius:var(--r-md); padding:20px}
-.panel h3{margin:0 0 14px; font-size:1.05rem}
-
-/* =========================================================
-   5. FORM
-   ========================================================= */
-label.field{display:block; font-weight:700; font-size:.92rem}
-.hint{display:block; font-weight:400; color:var(--muted); font-size:.82rem}
-input[type="text"],input[type="number"]{
-  font:inherit; width:100%; padding:9px 10px; margin-top:6px;
-  border:1px solid var(--line); border-radius:var(--r-sm); background:var(--paper); color:var(--ink);
-}
-input[aria-invalid="true"]{border-color:var(--right); box-shadow:0 0 0 1px var(--right)}
-table.thr{width:100%; border-collapse:collapse; margin-top:18px}
-table.thr th{font-size:.85rem; text-align:left; padding:6px 4px; color:var(--muted); font-weight:700}
-table.thr td{padding:4px}
-table.thr td input{margin-top:0; text-align:center; font-variant-numeric:tabular-nums}
-th.ear-r{color:var(--right)!important} th.ear-l{color:var(--left)!important}
-.sym{font-weight:700; margin-right:4px}
-.err{color:var(--right); font-size:.85rem; min-height:1.3em; margin:8px 0 0}
-.actions{display:flex; flex-wrap:wrap; gap:10px; margin-top:16px}
-button{font:inherit; font-size:.92rem; cursor:pointer; border-radius:var(--r-sm); padding:9px 16px; border:1px solid var(--ink)}
-button.primary{background:var(--ink); color:var(--paper)}
-button.ghost{background:transparent; color:var(--ink)}
-button.danger{background:transparent; color:var(--right); border-color:var(--right)}
-button:disabled{opacity:.45; cursor:not-allowed}
-
-/* =========================================================
-   6. RESULT + AUDIOGRAM (the one memorable element)
-   ========================================================= */
-.audiogram{width:100%; height:auto; display:block}
-.audiogram text{font-family:var(--font); fill:var(--muted); font-size:11px}
-.audiogram .band-label{font-size:10px}
-.ears{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:16px}
-.ear{border-left:4px solid var(--ink); padding:4px 0 4px 12px}
+.thr{width:100%;border-collapse:collapse;font-size:.86rem}
+.thr th,.thr td{padding:3px 2px;text-align:center}
+.thr th{color:var(--muted);font-weight:700;font-size:.78rem;white-space:nowrap}
+.thr td input{margin:0;padding:8px 2px;text-align:center;min-width:46px;min-height:40px}
+.thr td.na{background:var(--track)}
+.thr th.r{color:var(--right)} .thr th.l{color:var(--left)}
+.thr th[scope=row]{position:sticky;left:0;background:var(--surface);z-index:1;text-align:left;padding-right:6px}
+.mask{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:8px;font-size:.88rem}
+.mask label{display:flex;gap:6px;align-items:center;min-height:36px}
+.ag text{font-family:var(--font)}
+.legend-sym{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 16px;font-size:.84rem;margin-top:8px}
+.legend-sym span b{display:inline-block;min-width:1.4em;text-align:center}
+.ears{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px}
+@media (max-width:560px){ .ears{grid-template-columns:1fr} }
+.ear{border-left:4px solid var(--ink);padding:6px 0 6px 12px}
 .ear.r{border-color:var(--right)} .ear.l{border-color:var(--left)}
-.ear .name{font-size:.85rem; color:var(--muted)}
-.ear .val{font-size:1.6rem; font-weight:700; font-variant-numeric:tabular-nums; line-height:1.2}
-.ear .val small{font-size:.8rem; font-weight:400; color:var(--muted)}
-.ear .gr{font-size:.9rem}
-.overall{margin-top:16px; padding-top:14px; border-top:1px solid var(--line)}
-.overall .k{font-size:.85rem; color:var(--muted)}
-.overall .v{font-size:1.25rem; font-weight:700}
-.flag{display:inline-block; margin-top:6px; font-size:.85rem; color:var(--warn)}
-.muted{color:var(--muted); font-size:.9rem}
-
-/* =========================================================
-   7. RECORDS
-   ========================================================= */
-.records{margin-bottom:28px}
-.rec-head{display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between; align-items:center; margin-bottom:12px}
-.rec-head h3{margin:0}
-.table-scroll{overflow-x:auto}
-table.rec{width:100%; border-collapse:collapse; font-size:.9rem; font-variant-numeric:tabular-nums}
-table.rec th,table.rec td{padding:8px 6px; text-align:left; border-bottom:1px solid var(--line); white-space:nowrap}
-table.rec th{color:var(--muted); font-weight:700}
-table.rec button{padding:4px 10px; font-size:.82rem}
-.storage-warn{color:var(--warn); font-size:.88rem}
-
-/* =========================================================
-   8. FOOTER, TOAST, PRINT
-   ========================================================= */
-footer{border-top:1px solid var(--line); background:var(--surface); padding:18px 0 26px; font-size:.85rem; color:var(--muted)}
-footer p{margin:4px 0; max-width:80ch}
-.toast{position:fixed; left:50%; bottom:20px; transform:translateX(-50%) translateY(20px); opacity:0; background:var(--ink); color:var(--paper); padding:10px 18px; border-radius:var(--r-sm); transition:opacity .2s, transform .2s; pointer-events:none; max-width:calc(100% - 32px)}
-.toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
-@media (prefers-reduced-motion: reduce){ .toast{transition:none} }
-@media print{
-  body{background:#fff; color:#000}
-  header.top,.actions,.top-tools,.rec-head button,table.rec button,.toast,.no-print{display:none!important}
-  .panel{border:1px solid #999; break-inside:avoid}
-  .grid{grid-template-columns:1fr 1fr}
-}
+.ear h4{margin:0 0 4px;font-size:.95rem}
+.ear dl{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin:0;font-size:.9rem}
+.ear dt{color:var(--muted)} .ear dd{margin:0;font-variant-numeric:tabular-nums}
+.grade{margin-top:16px;padding:14px 16px;background:var(--paper);border:1px solid var(--line);border-radius:var(--r-sm)}
+.grade .g{font-size:1.35rem;font-weight:700}
+.who{width:100%;border-collapse:collapse;font-size:.86rem;margin-top:8px}
+.who th,.who td{border-bottom:1px solid var(--line);padding:6px;text-align:left;vertical-align:top}
+.who tr.on td{background:color-mix(in srgb,var(--accent) 10%,transparent);font-weight:700}
 </style>
 </head>
 <body>
-
-<header class="top">
-  <div class="wrap">
-    <div class="brand">
-      <svg width="34" height="34" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="12" fill="#F7F9FB"/><circle cx="22" cy="24" r="7" fill="none" stroke="#C62828" stroke-width="4"/><path d="M36 36l12 12M48 36L36 48" stroke="#1E5BB8" stroke-width="4" stroke-linecap="round"/><path d="M22 31 L42 42" stroke="#17212E" stroke-width="2" stroke-dasharray="3 3"/></svg>
-      <h1><span data-i18n="appName">ASLP App Kit</span><small data-i18n="appSub">Pure-tone average calculator</small></h1>
-    </div>
-    <div class="top-tools">
-      <span class="net" id="net" role="status" aria-live="polite"></span>
-      <label class="sr" for="lang" data-i18n="language">Language</label>
-      <select id="lang" class="lang">
-        <option value="en">English</option>
-        <option value="kn">ಕನ್ನಡ</option>
-        <option value="te">తెలుగు</option>
-        <option value="hi">हिन्दी</option>
-      </select>
-    </div>
-  </div>
-</header>
+<header class="top"><div class="wrap">
+  <div class="brand"><img src="icon.svg" width="34" height="34" alt=""><h1><span data-i18n="appName"></span><small data-i18n="appSub"></small></h1></div>
+  <div class="top-tools"><span class="net" id="net" role="status" aria-live="polite"></span><label class="sr" for="lang">Language</label><select id="lang" class="lang"></select></div>
+</div></header>
 
 <main class="wrap">
   <section class="intro">
-    <h2 data-i18n="introTitle">Pure-tone average and WHO hearing grade</h2>
-    <p data-i18n="introText">Type thresholds as you read them off the audiometer. The average, grade and audiogram update as you go. Nothing leaves this device.</p>
+    <h2>Audiogram, pure-tone averages and WHO hearing grade</h2>
+    <p>Enter air- and bone-conduction thresholds in dB HL. The audiogram uses the ASHA (1990) symbol set and proportions. Averages, air–bone gaps and the WHO (2021) grade update as you type.</p>
   </section>
 
-  <div class="grid">
-    <!-- ===== TOOL INPUT — replace this panel for a new app ===== -->
-    <section class="panel" aria-labelledby="formTitle">
-      <h3 id="formTitle" data-i18n="formTitle">Enter thresholds (dB HL)</h3>
-      <label class="field" for="clientId"><span data-i18n="clientId">Client ID</span>
-        <span class="hint" data-i18n="clientIdHint">Use a code, not a name.</span>
-        <input type="text" id="clientId" autocomplete="off" maxlength="40" placeholder="e.g. YMC-0425">
-      </label>
-      <table class="thr">
-        <thead><tr>
-          <th scope="col">Hz</th>
-          <th scope="col" class="ear-r"><span class="sym" aria-hidden="true">O</span><span data-i18n="rightEar">Right ear</span></th>
-          <th scope="col" class="ear-l"><span class="sym" aria-hidden="true">X</span><span data-i18n="leftEar">Left ear</span></th>
-        </tr></thead>
-        <tbody id="thrBody"></tbody>
-      </table>
-      <p class="err" id="formErr" role="alert"></p>
-      <div class="actions">
-        <button class="primary" id="saveBtn" type="button" data-i18n="save">Save record</button>
-        <button class="ghost" id="resetBtn" type="button" data-i18n="resetForm">Clear form</button>
+  <div class="grid2">
+    <section class="panel" aria-labelledby="inTitle">
+      <h3 id="inTitle">Thresholds (dB HL)</h3>
+      <label class="field" for="code">Client code <span class="hint">Use a code, not a name.</span><input type="text" id="code" maxlength="30" autocomplete="off"></label>
+      <p class="lead small-text" style="margin-top:12px">Type a number from −10 to 120, or <b>NR</b> for no response at the audiometer limit. Leave blank if not tested. Bone conduction is tested from 250 to 4000 Hz.</p>
+      <div class="table-scroll"><table class="thr" id="grid"></table></div>
+      <div class="mask" role="group" aria-label="Masking">
+        <label><input type="checkbox" id="mRA"> Right AC masked</label><label><input type="checkbox" id="mLA"> Left AC masked</label>
+        <label><input type="checkbox" id="mRB"> Right BC masked</label><label><input type="checkbox" id="mLB"> Left BC masked</label>
       </div>
+      <p class="err" id="err" role="alert"></p>
+      <div class="actions"><button type="button" class="primary" id="save">Save record</button><button type="button" id="print">Print report</button><button type="button" id="clear">Clear</button></div>
     </section>
 
-    <!-- ===== TOOL OUTPUT — replace this panel for a new app ===== -->
-    <section class="panel" aria-labelledby="resultTitle">
-      <h3 id="resultTitle" data-i18n="resultTitle">Result</h3>
-      <div id="audiogram" aria-hidden="true"></div>
-      <div class="ears">
-        <div class="ear r"><div class="name" data-i18n="rightEar">Right ear</div><div class="val" id="ptaR">–</div><div class="gr" id="grR"></div></div>
-        <div class="ear l"><div class="name" data-i18n="leftEar">Left ear</div><div class="val" id="ptaL">–</div><div class="gr" id="grL"></div></div>
+    <section class="panel" aria-labelledby="agTitle">
+      <h3 id="agTitle">Audiogram</h3>
+      <div id="ag"></div>
+      <div class="legend-sym" aria-label="Symbol key">
+        <span><b style="color:var(--right)">O</b> Right AC</span><span><b style="color:var(--left)">X</b> Left AC</span>
+        <span><b style="color:var(--right)">△</b> Right AC masked</span><span><b style="color:var(--left)">□</b> Left AC masked</span>
+        <span><b style="color:var(--right)">&lt;</b> Right BC</span><span><b style="color:var(--left)">&gt;</b> Left BC</span>
+        <span><b style="color:var(--right)">[</b> Right BC masked</span><span><b style="color:var(--left)">]</b> Left BC masked</span>
+        <span style="grid-column:1/-1">An arrow pointing down from a symbol means no response.</span>
       </div>
-      <div class="overall" id="overall" aria-live="polite"></div>
     </section>
   </div>
 
-  <!-- ===== RECORDS — reusable in every app ===== -->
-  <section class="panel records" aria-labelledby="recTitle">
-    <div class="rec-head">
-      <h3 id="recTitle" data-i18n="recordsTitle">Saved records</h3>
-      <div class="actions" style="margin-top:0">
-        <button class="ghost" id="csvBtn" type="button" data-i18n="exportCsv">Download CSV</button>
-        <button class="ghost" id="printBtn" type="button" data-i18n="printPdf">Print or save as PDF</button>
-        <button class="danger" id="clearBtn" type="button" data-i18n="clearAll">Delete all records</button>
-      </div>
-    </div>
-    <p class="storage-warn" id="storageWarn" hidden data-i18n="storageWarn"></p>
-    <div class="table-scroll" id="recWrap"></div>
+  <section class="panel" aria-labelledby="resTitle">
+    <h3 id="resTitle">Results</h3>
+    <div class="ears" id="ears"></div>
+    <div class="grade" id="grade" aria-live="polite"></div>
+    <details style="margin-top:14px"><summary>WHO grades of hearing loss (2021)</summary><div class="table-scroll"><table class="who" id="whoTable"></table></div>
+      <p class="muted small-text">Grades use the average of 500, 1000, 2000 and 4000 Hz in the better ear. The same cut-offs are shown per ear here only as a description.</p></details>
   </section>
+
+  <section class="panel" style="margin-top:20px" aria-labelledby="recTitle">
+    <div class="head-row"><h3 id="recTitle">Saved records</h3><div class="actions" style="margin-top:0"><button type="button" class="small" id="csv">Download CSV</button></div></div>
+    <div class="table-scroll" id="recs"></div>
+  </section>
+  <section id="printArea" aria-hidden="true"></section>
 </main>
 
-<footer>
-  <div class="wrap">
-    <p data-i18n="disclaimer">A screening and teaching aid. Clinical decisions rest with a qualified audiologist.</p>
-    <p data-i18n="reference">Grades follow the WHO World Report on Hearing (2021).</p>
-    <p id="credit"></p>
-  </div>
-</footer>
-
+<footer><div class="wrap">
+  <p data-i18n="disclaimer"></p>
+  <p class="small-text">Sources: World Health Organization. World report on hearing. Geneva: WHO; 2021. Olusanya BO, Davis AC, Hoffman HJ. Hearing loss grades and the International classification of functioning, disability and health. Bull World Health Organ 2019;97(10):725–728. American Speech-Language-Hearing Association. Guidelines for audiometric symbols. ASHA 1990;32(Suppl 2):25–30.</p>
+  <p>Records stay in this browser only.</p>
+  <p id="credit"></p>
+</div></footer>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<script src="kit.js"></script>
 <script>
-/* =========================================================
-   A. APP SETTINGS — the first thing to edit for a new app
-   ========================================================= */
-const APP = {
-  version: "0.1.0",
-  storageKey: "aslp-kit-pta-records",   // change per app so apps don't share data
-  langKey: "aslp-kit-lang",              // shared across apps on purpose: language choice follows the user
-  author: "Hemaraja Nayaka S",
-  affiliation: "Department of Audiology & Speech-Language Pathology, Yenepoya Medical College Hospital, Mangaluru"
-};
+const I18N_APP = { en:{ appName:"Audiogram & WHO Grade", appSub:"ASLP App Kit demo", disclaimer:"A documentation and teaching aid for audiologists. Interpretation and diagnosis rest with a qualified audiologist." } };
+const AC_F = [250,500,1000,2000,3000,4000,6000,8000];
+const BC_F = [250,500,1000,2000,3000,4000];
+const PTA4 = [500,1000,2000,4000], PTA3 = [500,1000,2000];
+const KEY = "aslp-kit-audiograms";
+/* WHO World Report on Hearing (2021); Olusanya, Davis & Hoffman 2019, Table 2 */
+const WHO = [
+  {g:"Normal hearing", lo:-Infinity, hi:20, quiet:"Excellent or good hearing", noise:"Good hearing, or rarely has difficulty following a conversation"},
+  {g:"Mild hearing loss", lo:20, hi:35, quiet:"Does not have problems hearing what is said", noise:"May have real difficulty following or taking part in a conversation"},
+  {g:"Moderate hearing loss", lo:35, hi:50, quiet:"May have difficulty hearing a normal voice", noise:"Has difficulty hearing and taking part in conversation"},
+  {g:"Moderately severe hearing loss", lo:50, hi:65, quiet:"Can hear loud speech", noise:"Has great difficulty hearing and taking part in conversation"},
+  {g:"Severe hearing loss", lo:65, hi:80, quiet:"Can hear loud speech directly in one's ear", noise:"Has very great difficulty hearing and taking part in conversation"},
+  {g:"Profound hearing loss", lo:80, hi:95, quiet:"Has great difficulty hearing", noise:"Cannot hear any speech"},
+  {g:"Complete or total hearing loss", lo:95, hi:Infinity, quiet:"Profoundly deaf, hears no speech or loud sounds", noise:"Cannot hear any speech or sound"}
+];
+const whoGrade = v => v == null ? null : WHO.find(w => v >= w.lo && v < w.hi);
+let recs = store.get(KEY, []);
+const fl = f => f >= 1000 ? (f/1000) + "k" : String(f);
 
-/* =========================================================
-   B. TRANSLATIONS — add a key here, then put data-i18n="key"
-      on any element. Native-speaker review recommended.
-   ========================================================= */
-const I18N = {
-  en:{
-    appName:"ASLP App Kit", appSub:"Pure-tone average calculator", language:"Language",
-    netOnline:"Online", netOffline:"Offline – still working",
-    introTitle:"Pure-tone average and WHO hearing grade",
-    introText:"Type thresholds as you read them off the audiometer. The average, grade and audiogram update as you go. Nothing leaves this device.",
-    formTitle:"Enter thresholds (dB HL)", clientId:"Client ID", clientIdHint:"Use a code, not a name.",
-    rightEar:"Right ear", leftEar:"Left ear", save:"Save record", saved:"Record saved", resetForm:"Clear form",
-    resultTitle:"Result", pta4:"4-frequency average (0.5, 1, 2, 4 kHz)",
-    betterEar:"WHO grade, better ear", unilateral:"Unilateral hearing loss pattern",
-    incomplete:"Enter all four frequencies for an ear to see its average.",
-    needBoth:"Enter both ears to see the WHO better-ear grade.",
-    rangeError:"Enter a value from −10 to 120 dB HL.",
-    needData:"Enter all four frequencies for at least one ear before saving.",
-    g_normal:"Normal hearing", g_mild:"Mild", g_moderate:"Moderate", g_modsevere:"Moderately severe",
-    g_severe:"Severe", g_profound:"Profound", g_total:"Complete or total",
-    recordsTitle:"Saved records", recordsEmpty:"No records yet. Saved records stay on this device only.",
-    exportCsv:"Download CSV", printPdf:"Print or save as PDF", clearAll:"Delete all records",
-    confirmClear:"Delete all saved records from this device? This cannot be undone.",
-    deleteOne:"Delete", deleted:"Record deleted", colDate:"Date", colId:"ID", colRight:"Right PTA", colLeft:"Left PTA", colGrade:"Grade",
-    storageWarn:"This browser is not keeping data. Records will be lost when you close the page.",
-    disclaimer:"A screening and teaching aid. Clinical decisions rest with a qualified audiologist.",
-    reference:"Grades follow the WHO World Report on Hearing (2021).", builtBy:"Built by"
-  },
-  kn:{
-    appName:"ASLP App Kit", appSub:"ಶುದ್ಧ-ಸ್ವರ ಸರಾಸರಿ ಲೆಕ್ಕಕ", language:"ಭಾಷೆ",
-    netOnline:"ಆನ್‌ಲೈನ್", netOffline:"ಆಫ್‌ಲೈನ್ – ಕೆಲಸ ಮುಂದುವರಿದಿದೆ",
-    introTitle:"ಶುದ್ಧ-ಸ್ವರ ಸರಾಸರಿ ಮತ್ತು WHO ಶ್ರವಣ ಶ್ರೇಣಿ",
-    introText:"ಆಡಿಯೋಮೀಟರ್‌ನಿಂದ ಓದಿದಂತೆ ಶ್ರವಣ ಮಿತಿಗಳನ್ನು ನಮೂದಿಸಿ. ಸರಾಸರಿ, ಶ್ರೇಣಿ ಮತ್ತು ಆಡಿಯೋಗ್ರಾಮ್ ತಕ್ಷಣ ಬದಲಾಗುತ್ತವೆ. ಯಾವ ಮಾಹಿತಿಯೂ ಈ ಸಾಧನದಿಂದ ಹೊರಹೋಗುವುದಿಲ್ಲ.",
-    formTitle:"ಶ್ರವಣ ಮಿತಿಗಳನ್ನು ನಮೂದಿಸಿ (dB HL)", clientId:"ಕ್ಲೈಂಟ್ ಐಡಿ", clientIdHint:"ಹೆಸರಲ್ಲ, ಕೋಡ್ ಬಳಸಿ.",
-    rightEar:"ಬಲ ಕಿವಿ", leftEar:"ಎಡ ಕಿವಿ", save:"ದಾಖಲೆ ಉಳಿಸಿ", saved:"ದಾಖಲೆ ಉಳಿಸಲಾಗಿದೆ", resetForm:"ಫಾರ್ಮ್ ಖಾಲಿ ಮಾಡಿ",
-    resultTitle:"ಫಲಿತಾಂಶ", pta4:"4-ಆವರ್ತನ ಸರಾಸರಿ (0.5, 1, 2, 4 kHz)",
-    betterEar:"WHO ಶ್ರೇಣಿ, ಉತ್ತಮ ಕಿವಿ", unilateral:"ಏಕಪಕ್ಷೀಯ ಶ್ರವಣದೋಷದ ಮಾದರಿ",
-    incomplete:"ಸರಾಸರಿ ನೋಡಲು ಒಂದು ಕಿವಿಯ ನಾಲ್ಕೂ ಆವರ್ತನಗಳನ್ನು ನಮೂದಿಸಿ.",
-    needBoth:"WHO ಉತ್ತಮ-ಕಿವಿ ಶ್ರೇಣಿ ನೋಡಲು ಎರಡೂ ಕಿವಿಗಳನ್ನು ನಮೂದಿಸಿ.",
-    rangeError:"−10 ರಿಂದ 120 dB HL ನಡುವಿನ ಮೌಲ್ಯ ನಮೂದಿಸಿ.",
-    needData:"ಉಳಿಸುವ ಮೊದಲು ಕನಿಷ್ಠ ಒಂದು ಕಿವಿಯ ನಾಲ್ಕೂ ಆವರ್ತನಗಳನ್ನು ನಮೂದಿಸಿ.",
-    g_normal:"ಸಾಮಾನ್ಯ ಶ್ರವಣ", g_mild:"ಸೌಮ್ಯ", g_moderate:"ಮಧ್ಯಮ", g_modsevere:"ಮಧ್ಯಮ-ತೀವ್ರ",
-    g_severe:"ತೀವ್ರ", g_profound:"ಅತಿತೀವ್ರ", g_total:"ಸಂಪೂರ್ಣ",
-    recordsTitle:"ಉಳಿಸಿದ ದಾಖಲೆಗಳು", recordsEmpty:"ಇನ್ನೂ ದಾಖಲೆಗಳಿಲ್ಲ. ಉಳಿಸಿದ ದಾಖಲೆಗಳು ಈ ಸಾಧನದಲ್ಲಿ ಮಾತ್ರ ಇರುತ್ತವೆ.",
-    exportCsv:"CSV ಡೌನ್‌ಲೋಡ್", printPdf:"ಮುದ್ರಿಸಿ ಅಥವಾ PDF ಆಗಿ ಉಳಿಸಿ", clearAll:"ಎಲ್ಲಾ ದಾಖಲೆಗಳನ್ನು ಅಳಿಸಿ",
-    confirmClear:"ಈ ಸಾಧನದಿಂದ ಎಲ್ಲಾ ದಾಖಲೆಗಳನ್ನು ಅಳಿಸಬೇಕೆ? ಇದನ್ನು ಮರಳಿ ಪಡೆಯಲಾಗುವುದಿಲ್ಲ.",
-    deleteOne:"ಅಳಿಸಿ", deleted:"ದಾಖಲೆ ಅಳಿಸಲಾಗಿದೆ", colDate:"ದಿನಾಂಕ", colId:"ಐಡಿ", colRight:"ಬಲ PTA", colLeft:"ಎಡ PTA", colGrade:"ಶ್ರೇಣಿ",
-    storageWarn:"ಈ ಬ್ರೌಸರ್ ಡೇಟಾ ಉಳಿಸುತ್ತಿಲ್ಲ. ಪುಟ ಮುಚ್ಚಿದಾಗ ದಾಖಲೆಗಳು ಕಳೆದುಹೋಗುತ್ತವೆ.",
-    disclaimer:"ಇದು ತಪಾಸಣೆ ಮತ್ತು ಬೋಧನಾ ಸಹಾಯಕ. ಚಿಕಿತ್ಸಾ ನಿರ್ಧಾರಗಳು ಅರ್ಹ ಶ್ರವಣಶಾಸ್ತ್ರಜ್ಞರದ್ದು.",
-    reference:"ಶ್ರೇಣಿಗಳು WHO ವಿಶ್ವ ಶ್ರವಣ ವರದಿ (2021) ಅನುಸಾರ.", builtBy:"ರಚನೆ"
-  },
-  te:{
-    appName:"ASLP App Kit", appSub:"ప్యూర్-టోన్ సగటు గణకం", language:"భాష",
-    netOnline:"ఆన్‌లైన్", netOffline:"ఆఫ్‌లైన్ – పని కొనసాగుతోంది",
-    introTitle:"ప్యూర్-టోన్ సగటు మరియు WHO వినికిడి గ్రేడ్",
-    introText:"ఆడియోమీటర్ నుండి చదివినట్లు వినికిడి పరిమితులను నమోదు చేయండి. సగటు, గ్రేడ్ మరియు ఆడియోగ్రామ్ వెంటనే మారుతాయి. ఏ సమాచారమూ ఈ పరికరం దాటి వెళ్లదు.",
-    formTitle:"వినికిడి పరిమితులను నమోదు చేయండి (dB HL)", clientId:"క్లయింట్ ఐడి", clientIdHint:"పేరు కాదు, కోడ్ వాడండి.",
-    rightEar:"కుడి చెవి", leftEar:"ఎడమ చెవి", save:"రికార్డు సేవ్ చేయండి", saved:"రికార్డు సేవ్ అయింది", resetForm:"ఫారం ఖాళీ చేయండి",
-    resultTitle:"ఫలితం", pta4:"4-పౌనఃపున్య సగటు (0.5, 1, 2, 4 kHz)",
-    betterEar:"WHO గ్రేడ్, మెరుగైన చెవి", unilateral:"ఏకపక్ష వినికిడి లోపం నమూనా",
-    incomplete:"సగటు చూడటానికి ఒక చెవికి నాలుగు పౌనఃపున్యాలనూ నమోదు చేయండి.",
-    needBoth:"WHO మెరుగైన-చెవి గ్రేడ్ చూడటానికి రెండు చెవులూ నమోదు చేయండి.",
-    rangeError:"−10 నుండి 120 dB HL మధ్య విలువ నమోదు చేయండి.",
-    needData:"సేవ్ చేసే ముందు కనీసం ఒక చెవికి నాలుగు పౌనఃపున్యాలనూ నమోదు చేయండి.",
-    g_normal:"సాధారణ వినికిడి", g_mild:"స్వల్ప", g_moderate:"మధ్యస్థ", g_modsevere:"మధ్యస్థ-తీవ్ర",
-    g_severe:"తీవ్ర", g_profound:"అతితీవ్ర", g_total:"సంపూర్ణ",
-    recordsTitle:"సేవ్ చేసిన రికార్డులు", recordsEmpty:"ఇంకా రికార్డులు లేవు. సేవ్ చేసిన రికార్డులు ఈ పరికరంలో మాత్రమే ఉంటాయి.",
-    exportCsv:"CSV డౌన్‌లోడ్", printPdf:"ప్రింట్ లేదా PDFగా సేవ్ చేయండి", clearAll:"అన్ని రికార్డులు తొలగించండి",
-    confirmClear:"ఈ పరికరం నుండి అన్ని రికార్డులు తొలగించాలా? దీనిని తిరిగి పొందలేరు.",
-    deleteOne:"తొలగించు", deleted:"రికార్డు తొలగించబడింది", colDate:"తేదీ", colId:"ఐడి", colRight:"కుడి PTA", colLeft:"ఎడమ PTA", colGrade:"గ్రేడ్",
-    storageWarn:"ఈ బ్రౌజర్ డేటాను నిల్వ చేయడం లేదు. పేజీ మూసినప్పుడు రికార్డులు పోతాయి.",
-    disclaimer:"ఇది స్క్రీనింగ్ మరియు బోధనా సహాయకం. క్లినికల్ నిర్ణయాలు అర్హత గల ఆడియాలజిస్ట్‌వే.",
-    reference:"గ్రేడ్‌లు WHO ప్రపంచ వినికిడి నివేదిక (2021) ప్రకారం.", builtBy:"రూపకల్పన"
-  },
-  hi:{
-    appName:"ASLP App Kit", appSub:"प्योर-टोन औसत कैलकुलेटर", language:"भाषा",
-    netOnline:"ऑनलाइन", netOffline:"ऑफ़लाइन – काम जारी है",
-    introTitle:"प्योर-टोन औसत और WHO श्रवण श्रेणी",
-    introText:"ऑडियोमीटर से पढ़ते हुए थ्रेशोल्ड दर्ज करें। औसत, श्रेणी और ऑडियोग्राम तुरंत बदलते हैं। कोई जानकारी इस डिवाइस से बाहर नहीं जाती।",
-    formTitle:"श्रवण थ्रेशोल्ड दर्ज करें (dB HL)", clientId:"क्लाइंट आईडी", clientIdHint:"नाम नहीं, कोड लिखें।",
-    rightEar:"दायाँ कान", leftEar:"बायाँ कान", save:"रिकॉर्ड सहेजें", saved:"रिकॉर्ड सहेजा गया", resetForm:"फ़ॉर्म खाली करें",
-    resultTitle:"परिणाम", pta4:"4-आवृत्ति औसत (0.5, 1, 2, 4 kHz)",
-    betterEar:"WHO श्रेणी, बेहतर कान", unilateral:"एकतरफ़ा श्रवण हानि का पैटर्न",
-    incomplete:"औसत देखने के लिए एक कान की चारों आवृत्तियाँ दर्ज करें।",
-    needBoth:"WHO बेहतर-कान श्रेणी देखने के लिए दोनों कान दर्ज करें।",
-    rangeError:"−10 से 120 dB HL के बीच मान दर्ज करें।",
-    needData:"सहेजने से पहले कम से कम एक कान की चारों आवृत्तियाँ दर्ज करें।",
-    g_normal:"सामान्य श्रवण", g_mild:"हल्का", g_moderate:"मध्यम", g_modsevere:"मध्यम-गंभीर",
-    g_severe:"गंभीर", g_profound:"अति गंभीर", g_total:"पूर्ण",
-    recordsTitle:"सहेजे गए रिकॉर्ड", recordsEmpty:"अभी कोई रिकॉर्ड नहीं। सहेजे गए रिकॉर्ड केवल इसी डिवाइस पर रहते हैं।",
-    exportCsv:"CSV डाउनलोड करें", printPdf:"प्रिंट करें या PDF सहेजें", clearAll:"सभी रिकॉर्ड हटाएँ",
-    confirmClear:"इस डिवाइस से सभी रिकॉर्ड हटाएँ? इसे वापस नहीं लाया जा सकता।",
-    deleteOne:"हटाएँ", deleted:"रिकॉर्ड हटाया गया", colDate:"तारीख़", colId:"आईडी", colRight:"दायाँ PTA", colLeft:"बायाँ PTA", colGrade:"श्रेणी",
-    storageWarn:"यह ब्राउज़र डेटा नहीं रख रहा है। पेज बंद करने पर रिकॉर्ड मिट जाएँगे।",
-    disclaimer:"यह स्क्रीनिंग और शिक्षण सहायक है। नैदानिक निर्णय योग्य ऑडियोलॉजिस्ट के होते हैं।",
-    reference:"श्रेणियाँ WHO विश्व श्रवण रिपोर्ट (2021) के अनुसार।", builtBy:"निर्माता"
-  }
-};
-
-/* =========================================================
-   C. SHARED HELPERS — reuse unchanged in every app
-   ========================================================= */
-const $ = s => document.querySelector(s);
-const store = (() => {            // localStorage that never crashes; falls back to memory
-  const mem = {}; let ok = true;
-  try { const k="__t"; localStorage.setItem(k,"1"); localStorage.removeItem(k); } catch(e){ ok=false; }
-  return {
-    ok,
-    get(k, d){ try{ const v = ok ? localStorage.getItem(k) : mem[k]; return v==null ? d : JSON.parse(v); }catch(e){ return d; } },
-    set(k, v){ const s = JSON.stringify(v); try{ ok ? localStorage.setItem(k,s) : (mem[k]=s); }catch(e){ mem[k]=s; } }
-  };
-})();
-let lang = store.get(APP.langKey, null) || ((navigator.language||"en").slice(0,2) in I18N ? (navigator.language||"en").slice(0,2) : "en");
-const t = k => (I18N[lang] && I18N[lang][k]) || I18N.en[k] || k;
-const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-
-function applyLang(){
-  document.documentElement.lang = lang;
-  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.dataset.i18n); });
-  $("#lang").value = lang;
-  $("#credit").textContent = `${t("builtBy")}: ${APP.author}, ${APP.affiliation}. v${APP.version}`;
-  updateNet(); buildInputs(true); render(); renderRecords();
+function buildGrid(){
+  const row = (kind, ear, freqs) => `<tr><th class="${ear==="R"?"r":"l"}" scope="row">${ear==="R"?"Right":"Left"} ${kind}</th>${AC_F.map(f => freqs.includes(f)
+    ? `<td><input type="text" inputmode="numeric" maxlength="3" data-k="${kind}-${ear}-${f}" aria-label="${ear==="R"?"Right":"Left"} ${kind==="AC"?"air":"bone"} conduction ${f} Hz"></td>` : `<td class="na"></td>`).join("")}</tr>`;
+  $("#grid").innerHTML = `<thead><tr><th>Hz</th>${AC_F.map(f => `<th>${fl(f)}</th>`).join("")}</tr></thead><tbody>
+    ${row("AC","R",AC_F)}${row("AC","L",AC_F)}${row("BC","R",BC_F)}${row("BC","L",BC_F)}</tbody>`;
 }
-function toast(msg){ const el=$("#toast"); el.textContent=msg; el.classList.add("show"); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove("show"),2200); }
-function updateNet(){ const n=$("#net"), on=navigator.onLine; n.dataset.state = on?"online":"offline"; n.textContent = on?t("netOnline"):t("netOffline"); }
-function downloadCSV(rows, filename){
-  const csv = rows.map(r => r.map(v => `"${String(v??"").replace(/"/g,'""')}"`).join(",")).join("\r\n");
-  const blob = new Blob(["﻿"+csv], {type:"text/csv;charset=utf-8"}); // BOM so Excel shows Indic text correctly
-  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = filename;
-  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
-}
-
-/* =========================================================
-   D. TOOL LOGIC — this is the part you replace for a new app
-   ========================================================= */
-const FREQS = [500, 1000, 2000, 4000];
-// WHO World Report on Hearing (2021): grade from 4-frequency PTA (0.5, 1, 2, 4 kHz)
-function whoGrade(pta){
-  if (pta == null) return null;
-  if (pta < 20) return "g_normal";
-  if (pta < 35) return "g_mild";
-  if (pta < 50) return "g_moderate";
-  if (pta < 65) return "g_modsevere";
-  if (pta < 80) return "g_severe";
-  if (pta < 95) return "g_profound";
-  return "g_total";
-}
-const BANDS = [[-10,20,"g_normal"],[20,35,"g_mild"],[35,50,"g_moderate"],[50,65,"g_modsevere"],[65,80,"g_severe"],[80,95,"g_profound"],[95,120,"g_total"]];
-
-function buildInputs(keepValues){
-  const prev = keepValues ? readValues() : null;
-  $("#thrBody").innerHTML = FREQS.map((f,i) => `
-    <tr><th scope="row">${f}</th>
-      <td><input type="number" inputmode="numeric" min="-10" max="120" step="5" data-ear="R" data-i="${i}" aria-label="${esc(t("rightEar"))} ${f} Hz"></td>
-      <td><input type="number" inputmode="numeric" min="-10" max="120" step="5" data-ear="L" data-i="${i}" aria-label="${esc(t("leftEar"))} ${f} Hz"></td>
-    </tr>`).join("");
-  if (prev) ["R","L"].forEach(e => prev.raw[e].forEach((v,i) => { document.querySelector(`input[data-ear="${e}"][data-i="${i}"]`).value = v; }));
-  document.querySelectorAll("#thrBody input").forEach(inp => inp.addEventListener("input", render));
-}
-function readValues(){
-  const out = {R:[],L:[], raw:{R:[],L:[]}, invalid:false};
-  document.querySelectorAll("#thrBody input").forEach(inp => {
-    const e = inp.dataset.ear, i = +inp.dataset.i, s = inp.value.trim();
-    out.raw[e][i] = s;
-    if (s === ""){ out[e][i] = null; inp.removeAttribute("aria-invalid"); return; }
-    const n = Number(s);
-    const bad = !Number.isFinite(n) || n < -10 || n > 120;
-    inp.setAttribute("aria-invalid", bad ? "true" : "false");
-    if (bad) out.invalid = true;
-    out[e][i] = bad ? null : n;
+/* Read and validate: number, "NR" or blank */
+function read(){
+  const d = {AC:{R:{},L:{}}, BC:{R:{},L:{}}}; let bad = false;
+  $$("[data-k]").forEach(inp => {
+    const [k, e, f] = inp.dataset.k.split("-"), s = inp.value.trim().toUpperCase();
+    inp.removeAttribute("aria-invalid");
+    if (!s) return;
+    if (s === "NR"){ d[k][e][f] = "NR"; return; }
+    const n = Number(s), max = k === "BC" ? 80 : 120;
+    if (!Number.isFinite(n) || n < -10 || n > max || n % 5 !== 0){ inp.setAttribute("aria-invalid","true"); bad = true; return; }
+    d[k][e][f] = n;
   });
-  return out;
+  d.mask = {RA:$("#mRA").checked, LA:$("#mLA").checked, RB:$("#mRB").checked, LB:$("#mLB").checked};
+  return {d, bad};
 }
-const avg = arr => arr.every(v => v != null) ? Math.round(arr.reduce((a,b)=>a+b,0)/arr.length*10)/10 : null;
-
-function compute(){
-  const v = readValues();
-  const ptaR = avg(v.R), ptaL = avg(v.L);
-  let better = null, unilateral = false;
-  if (ptaR != null && ptaL != null){
-    better = Math.min(ptaR, ptaL);
-    unilateral = better < 20 && Math.max(ptaR, ptaL) >= 35;   // WHO 2021 unilateral definition
+/* Average over frequencies; reports why it cannot be computed */
+function avg(map, freqs){
+  const v = freqs.map(f => map[f]);
+  if (v.some(x => x === undefined)) return {val:null, why:"incomplete"};
+  if (v.some(x => x === "NR")) return {val:null, why:"nr"};
+  return {val: Math.round(v.reduce((a,b) => a+b, 0) / v.length * 10) / 10};
+}
+function earSummary(d, e){
+  const p4 = avg(d.AC[e], PTA4), p3 = avg(d.AC[e], PTA3), b4 = avg(d.BC[e], PTA4);
+  const gaps = PTA4.filter(f => typeof d.AC[e][f] === "number" && typeof d.BC[e][f] === "number").map(f => d.AC[e][f] - d.BC[e][f]);
+  const abg = gaps.length ? Math.round(gaps.reduce((a,b)=>a+b,0)/gaps.length*10)/10 : null;
+  let type = "–";
+  if (p4.val != null){
+    if (p4.val < 20) type = "No hearing loss on the pure-tone average";
+    else if (abg == null || gaps.length < 3) type = "Type needs bone conduction at 3 or more of 0.5, 1, 2, 4 kHz";
+    else if (abg > 10) type = (b4.val != null && b4.val >= 20) ? "Mixed (suggested)" : "Conductive (suggested)";
+    else type = "Sensorineural (suggested)";
   }
-  return {v, ptaR, ptaL, better, unilateral};
+  return {p4, p3, b4, abg, gapsN: gaps.length, type};
+}
+const fmt = a => a.val != null ? `${a.val} dB HL` : a.why === "nr" ? "Not calculable (no response)" : "–";
+
+/* ASHA audiogram: one octave on the x-axis equals 20 dB on the y-axis */
+function audiogram(d){
+  const oct = 64, dbPx = oct / 20, L = 46, T = 42, W = L + oct*5 + 24, H = T + 130*dbPx + 16;
+  const x = f => L + Math.log2(f/250) * oct, y = v => T + (v + 10) * dbPx;
+  let s = `<svg class="ag" viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-width:520px;display:block;margin:0 auto" role="img" aria-label="Audiogram">`;
+  for (let v = -10; v <= 120; v += 10) s += `<line x1="${L}" x2="${x(8000)}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="${v===0?1.4:.8}"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${v}</text>`;
+  AC_F.forEach(f => { const inter = f === 3000 || f === 6000;
+    s += `<line x1="${x(f)}" x2="${x(f)}" y1="${T}" y2="${y(120)}" stroke="var(--line)" stroke-width=".8" ${inter?'stroke-dasharray="3 3"':""}/><text x="${x(f)}" y="${T-8}" text-anchor="middle" font-size="11" fill="var(--muted)">${fl(f)}</text>`; });
+  s += `<text x="${(L + x(8000))/2}" y="12" text-anchor="middle" font-size="11" fill="var(--muted)">Frequency (Hz)</text><text x="10" y="${(T+H)/2}" transform="rotate(-90 10 ${(T+H)/2})" text-anchor="middle" font-size="11" fill="var(--muted)">Hearing level (dB HL)</text>`;
+  const arrow = (cx, cy, dir, col) => `<path d="M${cx} ${cy+8}l${dir*8} 10m0 0l${-dir*5} -1m${dir*5} 1l-1 -5" stroke="${col}" stroke-width="1.6" fill="none"/>`;
+  const sym = (kind, e, f, v) => {
+    const cx = x(f), nr = v === "NR", cy = y(nr ? 120 : v), R = e === "R", col = R ? "var(--right)" : "var(--left)", masked = d.mask[e + (kind==="AC"?"A":"B")];
+    let g = "";
+    if (kind === "AC"){
+      if (R && !masked) g = `<circle cx="${cx}" cy="${cy}" r="6" fill="var(--surface)" stroke="${col}" stroke-width="2"/>`;
+      if (R && masked) g = `<path d="M${cx} ${cy-7}L${cx+7} ${cy+5}H${cx-7}Z" fill="var(--surface)" stroke="${col}" stroke-width="2"/>`;
+      if (!R && !masked) g = `<path d="M${cx-5} ${cy-5}L${cx+5} ${cy+5}M${cx+5} ${cy-5}L${cx-5} ${cy+5}" stroke="${col}" stroke-width="2.2" stroke-linecap="round"/>`;
+      if (!R && masked) g = `<rect x="${cx-6}" y="${cy-6}" width="12" height="12" fill="var(--surface)" stroke="${col}" stroke-width="2"/>`;
+    } else {
+      const ox = R ? -11 : 11;   // BC symbols sit to the side of the frequency line
+      if (!masked) g = R ? `<path d="M${cx+ox+4} ${cy-6}L${cx+ox-3} ${cy}L${cx+ox+4} ${cy+6}" stroke="${col}" stroke-width="2" fill="none"/>` : `<path d="M${cx+ox-4} ${cy-6}L${cx+ox+3} ${cy}L${cx+ox-4} ${cy+6}" stroke="${col}" stroke-width="2" fill="none"/>`;
+      else g = R ? `<path d="M${cx+ox+4} ${cy-7}H${cx+ox-2}V${cy+7}H${cx+ox+4}" stroke="${col}" stroke-width="2" fill="none"/>` : `<path d="M${cx+ox-4} ${cy-7}H${cx+ox+2}V${cy+7}H${cx+ox-4}" stroke="${col}" stroke-width="2" fill="none"/>`;
+    }
+    return g + (nr ? arrow(kind==="BC" ? cx + (R?-11:11) : cx, cy, R ? -1 : 1, col) : "");
+  };
+  ["R","L"].forEach(e => {   // connect air-conduction points that have responses (ASHA: BC is not connected)
+    const pts = AC_F.map(f => typeof d.AC[e][f] === "number" ? [x(f), y(d.AC[e][f])] : null);
+    let path = "", pen = false; pts.forEach(p => { if (!p){ pen = false; return; } path += (pen?"L":"M") + p[0] + " " + p[1] + " "; pen = true; });
+    if (path) s += `<path d="${path}" fill="none" stroke="${e==="R"?"var(--right)":"var(--left)"}" stroke-width="1.4" ${e==="L"?'stroke-dasharray="6 4"':""}/>`;
+  });
+  ["AC","BC"].forEach(k => ["R","L"].forEach(e => Object.entries(d[k][e]).forEach(([f,v]) => s += sym(k, e, Number(f), v))));
+  return s + "</svg>";
 }
 
 function render(){
-  const c = compute();
-  $("#formErr").textContent = c.v.invalid ? t("rangeError") : "";
-  const fmt = p => p == null ? "–" : `${p}<small> dB HL</small>`;
-  $("#ptaR").innerHTML = fmt(c.ptaR); $("#ptaL").innerHTML = fmt(c.ptaL);
-  $("#grR").textContent = c.ptaR != null ? t(whoGrade(c.ptaR)) : "";
-  $("#grL").textContent = c.ptaL != null ? t(whoGrade(c.ptaL)) : "";
-  let html = "";
-  if (c.ptaR == null && c.ptaL == null) html = `<p class="muted">${esc(t("incomplete"))}</p>`;
-  else if (c.better == null) html = `<p class="muted">${esc(t("needBoth"))}</p>`;
-  else html = `<div class="k">${esc(t("betterEar"))}</div>
-               <div class="v">${esc(t(whoGrade(c.better)))} (${c.better} dB HL)</div>
-               ${c.unilateral ? `<span class="flag">${esc(t("unilateral"))}</span>` : ""}
-               <div class="muted">${esc(t("pta4"))}</div>`;
-  $("#overall").innerHTML = html;
-  drawAudiogram(c.v);
-}
-
-function drawAudiogram(v){
-  const W=380, H=300, L=44, R=92, T=26, B=14;
-  const xs = [250,500,1000,2000,4000,8000];
-  const x = f => L + xs.indexOf(f) * ((W-L-R)/(xs.length-1));
-  const y = db => T + (db + 10) * ((H-T-B)/130);
-  let s = `<svg class="audiogram" viewBox="0 0 ${W} ${H}" role="img">`;
-  BANDS.forEach(([a,b,k],i) => {
-    s += `<rect x="${L}" y="${y(a)}" width="${W-L-R}" height="${y(b)-y(a)}" fill="var(--band)" opacity="${0.02 + i*0.022}"/>`;
-    s += `<text class="band-label" x="${W-R+6}" y="${(y(a)+y(b))/2+3}">${esc(t(k))}</text>`;
-  });
-  for (let db=-10; db<=120; db+=10){
-    s += `<line x1="${L}" x2="${W-R}" y1="${y(db)}" y2="${y(db)}" stroke="var(--line)" stroke-width="${db%20===0?1:.5}"/>`;
-    if (db%20===0) s += `<text x="${L-6}" y="${y(db)+4}" text-anchor="end">${db}</text>`;
+  if (!$("#grid").innerHTML) buildGrid();
+  const {d, bad} = read();
+  $("#err").textContent = bad ? "Use multiples of 5 from −10 to 120 dB HL (bone conduction up to 80), or NR." : "";
+  $("#ag").innerHTML = audiogram(d);
+  const R = earSummary(d,"R"), Lf = earSummary(d,"L");
+  const earHTML = (s, e) => `<div class="ear ${e.toLowerCase()}"><h4>${e==="R"?"Right ear":"Left ear"}</h4><dl>
+    <dt>PTA 0.5–4 kHz</dt><dd>${fmt(s.p4)}</dd>
+    <dt>PTA 0.5–2 kHz</dt><dd>${fmt(s.p3)}</dd>
+    <dt>BC average</dt><dd>${fmt(s.b4)}</dd>
+    <dt>Mean air–bone gap</dt><dd>${s.abg != null ? `${s.abg} dB (${s.gapsN} freq.)` : "–"}</dd>
+    <dt>Degree (WHO cut-offs)</dt><dd>${s.p4.val != null ? esc(whoGrade(s.p4.val).g) : "–"}</dd>
+    <dt>Type</dt><dd>${esc(s.type)}</dd></dl></div>`;
+  $("#ears").innerHTML = earHTML(R,"R") + earHTML(Lf,"L");
+  let gHTML;
+  if (R.p4.val == null || Lf.p4.val == null){
+    gHTML = `<p class="muted" style="margin:0">Enter air conduction at 500, 1000, 2000 and 4000 Hz in both ears for the WHO grade. ${[R,Lf].some(s=>s.p4.why==="nr")?"A no-response at these frequencies means the average is at least as poor as the audiometer limit; record the grade clinically.":""}</p>`;
+  } else {
+    const better = Math.min(R.p4.val, Lf.p4.val), worse = Math.max(R.p4.val, Lf.p4.val), uni = better < 20 && worse >= 35;
+    // WHO lists unilateral loss as its own category: better ear < 20 dB HL, worse ear 35 dB HL or more
+    const w = uni ? {g:"Unilateral hearing loss", quiet:"Does not have problems unless sound is near the poorer hearing ear", noise:"May have real difficulty following or taking part in a conversation"} : whoGrade(better);
+    gHTML = `<div class="muted small-text">WHO grade, better ear (${better} dB HL)</div><div class="g">${esc(w.g)}</div>
+      <p style="margin:6px 0 0" class="small-text"><b>In quiet:</b> ${esc(w.quiet)}. <b>In noise:</b> ${esc(w.noise)}.</p>
+      ${uni ? `<p style="margin:8px 0 0" class="small-text">Better ear ${better} dB HL (below 20); worse ear ${worse} dB HL (35 or more).</p>` : ""}`;
   }
-  xs.forEach(f => {
-    s += `<line x1="${x(f)}" x2="${x(f)}" y1="${T}" y2="${H-B}" stroke="var(--line)" stroke-width=".8"/>`;
-    s += `<text x="${x(f)}" y="${T-10}" text-anchor="middle">${f>=1000?f/1000+"k":f}</text>`;
-  });
-  const path = (arr, color, dash) => {
-    const pts = FREQS.map((f,i) => arr[i]==null ? null : [x(f), y(arr[i])]);
-    let d = "", pen = false;
-    pts.forEach(p => { if (!p){ pen=false; return; } d += (pen?"L":"M") + p[0] + " " + p[1] + " "; pen = true; });
-    return d ? `<path d="${d}" fill="none" stroke="${color}" stroke-width="1.6" ${dash?'stroke-dasharray="5 4"':''}/>` : "";
-  };
-  s += path(v.R, "var(--right)", false) + path(v.L, "var(--left)", true);
-  FREQS.forEach((f,i) => {
-    if (v.R[i]!=null) s += `<circle cx="${x(f)}" cy="${y(v.R[i])}" r="6" fill="var(--surface)" stroke="var(--right)" stroke-width="2"/>`;
-    if (v.L[i]!=null){ const cx=x(f), cy=y(v.L[i]); s += `<path d="M${cx-5} ${cy-5}L${cx+5} ${cy+5}M${cx+5} ${cy-5}L${cx-5} ${cy+5}" stroke="var(--left)" stroke-width="2.2" stroke-linecap="round"/>`; }
-  });
-  s += `<text x="8" y="${(H+T)/2}" transform="rotate(-90 8 ${(H+T)/2})" text-anchor="middle">dB HL</text></svg>`;
-  $("#audiogram").innerHTML = s;
+  $("#grade").innerHTML = gHTML;
+  const best = (R.p4.val != null && Lf.p4.val != null) ? (Math.min(R.p4.val, Lf.p4.val) < 20 && Math.max(R.p4.val, Lf.p4.val) >= 35 ? "Unilateral" : whoGrade(Math.min(R.p4.val, Lf.p4.val)).g) : null;
+  $("#whoTable").innerHTML = `<thead><tr><th>Grade</th><th>Better-ear average</th><th>In quiet</th><th>In noise</th></tr></thead><tbody>${WHO.map(w => `<tr class="${w.g===best?"on":""}"><td>${esc(w.g)}</td><td class="num">${w.lo===-Infinity?"< 20":w.hi===Infinity?"95 or more":`${w.lo} to < ${w.hi}`} dB HL</td><td>${esc(w.quiet)}</td><td>${esc(w.noise)}</td></tr>`).join("")}
+    <tr class="${best==="Unilateral"?"on":""}"><td>Unilateral</td><td>Better ear &lt; 20, worse ear 35 or more</td><td>Does not have problems unless sound is near the poorer ear</td><td>May have real difficulty following conversation</td></tr></tbody>`;
+  $("#recs").innerHTML = recs.length ? `<table class="rec"><thead><tr><th>Date</th><th>Client</th><th>Right PTA</th><th>Left PTA</th><th>WHO grade</th><th></th></tr></thead><tbody>${recs.slice().reverse().map(r => `<tr><td>${esc(fmtDate(r.date))}</td><td>${esc(r.code||"–")}</td><td class="num">${r.pR ?? "–"}</td><td class="num">${r.pL ?? "–"}</td><td>${esc(r.grade||"–")}</td><td><button type="button" class="small" data-open="${r.id}">Open</button> <button type="button" class="small danger" data-del="${r.id}">Delete</button></td></tr>`).join("")}</tbody></table>` : `<p class="muted">No saved records. Records stay in this browser.</p>`;
 }
+function current(){ const {d} = read(), R = earSummary(d,"R"), Lf = earSummary(d,"L");
+  let grade = null;
+  if (R.p4.val != null && Lf.p4.val != null){ const b = Math.min(R.p4.val, Lf.p4.val), w = Math.max(R.p4.val, Lf.p4.val); grade = b < 20 && w >= 35 ? "Unilateral hearing loss" : whoGrade(b).g; }
+  return {d, R, Lf, grade}; }
 
-/* =========================================================
-   E. RECORDS — generic save / list / export
-   ========================================================= */
-let records = store.get(APP.storageKey, []);
-const saveRecords = () => store.set(APP.storageKey, records);
+$("#grid").addEventListener("input", render);
+$$(".mask input").forEach(c => c.addEventListener("change", render));
+$("#save").addEventListener("click", () => {
+  const c = current(); if (!Object.keys(c.d.AC.R).length && !Object.keys(c.d.AC.L).length){ toast("Enter some thresholds first."); return; }
+  recs.push({id:uid(), date:todayISO(), code:$("#code").value.trim(), d:c.d, pR:c.R.p4.val, pL:c.Lf.p4.val, grade:c.grade});
+  store.set(KEY, recs); render(); toast("Record saved");
+});
+$("#clear").addEventListener("click", () => { $$("[data-k]").forEach(i => i.value = ""); $$(".mask input").forEach(c => c.checked = false); $("#code").value = ""; render(); });
+$("#recs").addEventListener("click", e => {
+  if (e.target.dataset.del){ recs = recs.filter(r => r.id !== e.target.dataset.del); store.set(KEY, recs); render(); toast("Deleted"); }
+  if (e.target.dataset.open){ const r = recs.find(x => x.id === e.target.dataset.open); $("#code").value = r.code || "";
+    $$("[data-k]").forEach(i => { const [k,ea,f] = i.dataset.k.split("-"); i.value = r.d[k][ea][f] ?? ""; });
+    $("#mRA").checked = r.d.mask.RA; $("#mLA").checked = r.d.mask.LA; $("#mRB").checked = r.d.mask.RB; $("#mLB").checked = r.d.mask.LB; render(); window.scrollTo({top:0, behavior:"smooth"}); }
+});
+$("#csv").addEventListener("click", () => downloadCSV([["date","client", ...["R","L"].flatMap(e => AC_F.map(f => `AC_${e}_${f}`)), ...["R","L"].flatMap(e => BC_F.map(f => `BC_${e}_${f}`)), "PTA4_R","PTA4_L","WHO_grade_better_ear"],
+  ...recs.map(r => [r.date, r.code, ...["R","L"].flatMap(e => AC_F.map(f => r.d.AC[e][f] ?? "")), ...["R","L"].flatMap(e => BC_F.map(f => r.d.BC[e][f] ?? "")), r.pR ?? "", r.pL ?? "", r.grade ?? ""])], `audiograms-${todayISO()}.csv`));
+$("#print").addEventListener("click", () => { const c = current();
+  printArea(`<h2>Pure-tone audiometry report</h2><p>Client: <b>${esc($("#code").value || "–")}</b>. Date: ${esc(fmtDate(new Date()))}.</p>
+    <div style="max-width:420px">${audiogram(c.d)}</div>
+    <table><tr><th></th><th>Right</th><th>Left</th></tr>
+    <tr><td>PTA 0.5–4 kHz</td><td>${fmt(c.R.p4)}</td><td>${fmt(c.Lf.p4)}</td></tr><tr><td>PTA 0.5–2 kHz</td><td>${fmt(c.R.p3)}</td><td>${fmt(c.Lf.p3)}</td></tr>
+    <tr><td>Mean air–bone gap</td><td>${c.R.abg ?? "–"}</td><td>${c.Lf.abg ?? "–"}</td></tr><tr><td>Type</td><td>${esc(c.R.type)}</td><td>${esc(c.Lf.type)}</td></tr></table>
+    <p><b>WHO grade (better ear, WHO 2021):</b> ${esc(c.grade || "not calculable")}</p><div class="sig"><div>Audiologist (name, RCI number)</div><div>Date</div></div>`); });
 
-function saveCurrent(){
-  const c = compute();
-  if (c.v.invalid){ $("#formErr").textContent = t("rangeError"); return; }
-  if (c.ptaR == null && c.ptaL == null){ $("#formErr").textContent = t("needData"); return; }
-  records.unshift({
-    id: Date.now().toString(36), date: new Date().toISOString(),
-    clientId: $("#clientId").value.trim(),
-    right: c.v.R, left: c.v.L, ptaR: c.ptaR, ptaL: c.ptaL,
-    grade: c.better != null ? whoGrade(c.better) : whoGrade(c.ptaR ?? c.ptaL),
-    unilateral: c.unilateral
-  });
-  saveRecords(); renderRecords(); toast(t("saved"));
-}
-function renderRecords(){
-  $("#storageWarn").hidden = store.ok;
-  const btns = ["#csvBtn","#printBtn","#clearBtn"];
-  btns.forEach(b => $(b).disabled = records.length === 0);
-  if (!records.length){ $("#recWrap").innerHTML = `<p class="muted">${esc(t("recordsEmpty"))}</p>`; return; }
-  const d = iso => new Date(iso).toLocaleDateString(lang === "en" ? "en-IN" : lang + "-IN", {day:"2-digit", month:"short", year:"numeric"});
-  $("#recWrap").innerHTML = `<table class="rec"><thead><tr>
-      <th>${esc(t("colDate"))}</th><th>${esc(t("colId"))}</th><th>${esc(t("colRight"))}</th><th>${esc(t("colLeft"))}</th><th>${esc(t("colGrade"))}</th><th><span class="sr">${esc(t("deleteOne"))}</span></th>
-    </tr></thead><tbody>${records.map(r => `<tr>
-      <td>${esc(d(r.date))}</td><td>${esc(r.clientId || "–")}</td>
-      <td>${r.ptaR ?? "–"}</td><td>${r.ptaL ?? "–"}</td>
-      <td>${esc(r.grade ? t(r.grade) : "–")}</td>
-      <td><button class="danger" type="button" data-del="${esc(r.id)}">${esc(t("deleteOne"))}</button></td>
-    </tr>`).join("")}</tbody></table>`;
-}
-function exportCSV(){
-  const head = ["date","client_id", ...FREQS.map(f=>"R_"+f), ...FREQS.map(f=>"L_"+f), "PTA_right","PTA_left","WHO_grade_better_ear","unilateral_pattern"];
-  const rows = records.map(r => [r.date, r.clientId, ...r.right.map(v=>v??""), ...r.left.map(v=>v??""), r.ptaR??"", r.ptaL??"", r.grade ? I18N.en[r.grade] : "", r.unilateral ? "yes" : "no"]);
-  downloadCSV([head, ...rows], `pta-records-${new Date().toISOString().slice(0,10)}.csv`);
-}
-
-/* =========================================================
-   F. WIRING
-   ========================================================= */
-$("#lang").addEventListener("change", e => { lang = e.target.value; store.set(APP.langKey, lang); applyLang(); });
-$("#saveBtn").addEventListener("click", saveCurrent);
-$("#resetBtn").addEventListener("click", () => { $("#clientId").value=""; document.querySelectorAll("#thrBody input").forEach(i => { i.value=""; i.removeAttribute("aria-invalid"); }); render(); $("#clientId").focus(); });
-$("#csvBtn").addEventListener("click", exportCSV);
-$("#printBtn").addEventListener("click", () => window.print());
-$("#clearBtn").addEventListener("click", () => { if (confirm(t("confirmClear"))){ records = []; saveRecords(); renderRecords(); } });
-$("#recWrap").addEventListener("click", e => { const id = e.target.dataset && e.target.dataset.del; if (!id) return; records = records.filter(r => r.id !== id); saveRecords(); renderRecords(); toast(t("deleted")); });
-window.addEventListener("online", updateNet); window.addEventListener("offline", updateNet);
-applyLang();
-
-// Offline support: registers the service worker (only works on a real web address, not a local file)
-if ("serviceWorker" in navigator && location.protocol.startsWith("http")){
-  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(()=>{}));
-}
+KIT.start({ i18n: I18N_APP, render, version: "0.2.0" });
 </script>
 </body>
 </html>

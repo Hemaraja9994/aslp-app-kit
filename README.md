@@ -1,6 +1,6 @@
 # ASLP App Kit
 
-Starter template for every app in this series, with a pure-tone average calculator (WHO 2021 grading, live audiogram) as the demo.
+Starter template for every app in this series. The demo is a standard audiogram (ASHA 1990 symbols and proportions: air and bone conduction, masking, no-response) with pure-tone averages, air–bone gaps and WHO (2021) better-ear grading, including the unilateral category and the WHO hearing-experience descriptors.
 
 Part of the ASLP App Kit series (phase 0) by Hemaraja Nayaka S, Department of Audiology & Speech-Language Pathology, Yenepoya Medical College Hospital, Mangaluru.
 

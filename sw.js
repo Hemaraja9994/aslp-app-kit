@@ -2,8 +2,8 @@
    In plain words: the first time someone opens the app online, the browser keeps a copy
    of the app files. After that, the app opens even with no internet.
    When you publish a change, raise the version number below so phones fetch the new copy. */
-const CACHE = "aslp-kit-v1";
-const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg"];
+const CACHE = "aslp-kit-v2";
+const SHELL = ["./", "./index.html", "./kit.css", "./kit.js", "./manifest.webmanifest", "./icon.svg"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
