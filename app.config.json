@@ -1,0 +1,1 @@
+{ "name": "Audiogram & WHO Grade", "shortName": "Audiogram", "description": "Plot a standard audiogram (ASHA symbols), calculate pure-tone averages and air-bone gaps, and grade hearing loss using the WHO World Report on Hearing (2021). Works offline; data stays on the device.", "version": "1.0.0" }
